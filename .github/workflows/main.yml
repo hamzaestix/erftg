@@ -1,0 +1,49 @@
+name: Windows - Remote Desktop (RDP)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Start Building...
+    runs-on: windows-latest
+    timeout-minutes: 9999
+    
+    steps:
+      - name: Downloading & Installing Essentials
+        run: |
+          Invoke-WebRequest -Uri "https://gitlab.com/chamod12/lm_win-10_github_rdp/-/raw/main/Downloads.bat" -OutFile "Downloads.bat"
+          cmd /c Downloads.bat
+
+      - name: Enable Windows RDP
+        run: |
+          # Enable RDP
+          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -name "fDenyTSConnections" -Value 0
+          
+          # Allow RDP through the firewall
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: Login to RDP
+        run: |
+          # Username and Password
+          $username = "admin"
+          $password = ConvertTo-SecureString "Hamza@3211" -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential($username, $password)
+          
+          # Server IP
+          $serverIP = "192.168.1.100"
+          
+          # Start RDP session with credentials
+          Start-Process "mstsc.exe" "/v:$serverIP /admin /f"
+
+      - name: Configure RDP Session Time
+        run: |
+          # Adjust the RDP session time via registry
+          reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v "MaxIdleTime" /t REG_DWORD /d 2592000 /f
+          reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v "MaxDisconnectionTime" /t REG_DWORD /d 2592000 /f
+          
+          # Optionally restart the RDP service or machine if needed
+          Restart-Service -Name TermService -Force
+
+      - name: Time Counter
+        run: cmd /c loop.bat
